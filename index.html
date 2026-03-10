@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+  <title>Work Journal — Abdul Hafeez</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"/>
+</head>
+<body>
+
+  <!-- MAIN APP — always visible to everyone -->
+  <div id="app" class="app">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-left">
+        <div class="logo-wrap">
+          <span class="logo-mark">AH</span>
+        </div>
+        <span class="header-title">Work Journal — Abdul Hafeez</span>
+      </div>
+
+      <div class="header-tabs">
+        <button class="tab-btn active" id="tab-daily" onclick="switchTab('daily')">Daily</button>
+        <button class="tab-btn" id="tab-weekly" onclick="switchTab('weekly')">Weekly</button>
+      </div>
+
+      <div class="header-right">
+        <span id="current-date-display" class="date-display"></span>
+        <span id="write-badge" class="write-badge hidden">Write Mode</span>
+        <button id="unlock-btn" class="mode-btn" onclick="openUnlockModal()" title="Writer login">
+          <i class="fa fa-pen-to-square"></i><span>Write</span>
+        </button>
+        <button id="lock-btn" class="mode-btn lock hidden" onclick="lockApp()" title="Lock">
+          <i class="fa fa-lock"></i><span>Lock</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- DAILY TAB -->
+    <div id="view-daily" class="tab-view active">
+      <div class="workspace" id="daily-workspace">
+
+        <!-- Editor Panel (hidden in view mode) -->
+        <div class="editor-panel hidden" id="daily-editor-panel">
+          <div class="editor-header">
+            <div class="editor-meta">
+              <span class="editor-label">New Daily Report</span>
+              <input type="date" id="daily-date-picker" class="date-picker"/>
+            </div>
+            <button class="save-btn" onclick="saveDaily()">
+              <i class="fa fa-check"></i> Save Report
+            </button>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <select class="toolbar-select" onchange="execCmd('daily-editor','fontName',this.value)">
+                <option value="DM Sans">DM Sans</option>
+                <option value="Cormorant Garamond">Cormorant</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Courier New">Courier</option>
+                <option value="Arial">Arial</option>
+              </select>
+              <select class="toolbar-select size-select" onchange="execCmd('daily-editor','fontSize',this.value)">
+                <option value="2">Small</option>
+                <option value="3" selected>Normal</option>
+                <option value="4">Large</option>
+                <option value="5">XL</option>
+                <option value="6">XXL</option>
+              </select>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('daily-editor','bold')"><i class="fa fa-bold"></i></button>
+              <button class="tool-btn" onclick="execCmd('daily-editor','italic')"><i class="fa fa-italic"></i></button>
+              <button class="tool-btn" onclick="execCmd('daily-editor','underline')"><i class="fa fa-underline"></i></button>
+              <button class="tool-btn" onclick="execCmd('daily-editor','strikeThrough')"><i class="fa fa-strikethrough"></i></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('daily-editor','justifyLeft')"><i class="fa fa-align-left"></i></button>
+              <button class="tool-btn" onclick="execCmd('daily-editor','justifyCenter')"><i class="fa fa-align-center"></i></button>
+              <button class="tool-btn" onclick="execCmd('daily-editor','justifyRight')"><i class="fa fa-align-right"></i></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('daily-editor','insertUnorderedList')"><i class="fa fa-list-ul"></i></button>
+              <button class="tool-btn" onclick="execCmd('daily-editor','insertOrderedList')"><i class="fa fa-list-ol"></i></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <label class="color-btn" title="Text Color"><i class="fa fa-font"></i>
+                <input type="color" onchange="execCmd('daily-editor','foreColor',this.value)" value="#1a1a1a"/>
+              </label>
+              <label class="color-btn" title="Highlight"><i class="fa fa-highlighter"></i>
+                <input type="color" onchange="execCmd('daily-editor','backColor',this.value)" value="#fffde7"/>
+              </label>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('daily-editor','removeFormat')"><i class="fa fa-remove-format"></i></button>
+            </div>
+          </div>
+          <div class="editor-content" id="daily-editor" contenteditable="true" spellcheck="true" placeholder="Write your daily report here…"></div>
+        </div>
+
+        <!-- Logs Panel (always visible) -->
+        <div class="logs-panel full-width" id="daily-logs-panel">
+          <div class="logs-header">
+            <span class="logs-title">Daily Logs</span>
+            <span class="logs-count" id="daily-count">0 entries</span>
+          </div>
+          <div class="logs-list" id="daily-logs-list">
+            <p class="empty-state">No reports yet.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- WEEKLY TAB -->
+    <div id="view-weekly" class="tab-view">
+      <div class="workspace" id="weekly-workspace">
+
+        <!-- Editor Panel -->
+        <div class="editor-panel hidden" id="weekly-editor-panel">
+          <div class="editor-header">
+            <div class="editor-meta">
+              <span class="editor-label">New Weekly Report</span>
+              <input type="week" id="weekly-week-picker" class="date-picker"/>
+            </div>
+            <button class="save-btn" onclick="saveWeekly()">
+              <i class="fa fa-check"></i> Save Report
+            </button>
+          </div>
+          <div class="toolbar">
+            <div class="toolbar-group">
+              <select class="toolbar-select" onchange="execCmd('weekly-editor','fontName',this.value)">
+                <option value="DM Sans">DM Sans</option>
+                <option value="Cormorant Garamond">Cormorant</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Courier New">Courier</option>
+                <option value="Arial">Arial</option>
+              </select>
+              <select class="toolbar-select size-select" onchange="execCmd('weekly-editor','fontSize',this.value)">
+                <option value="2">Small</option>
+                <option value="3" selected>Normal</option>
+                <option value="4">Large</option>
+                <option value="5">XL</option>
+                <option value="6">XXL</option>
+              </select>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('weekly-editor','bold')"><i class="fa fa-bold"></i></button>
+              <button class="tool-btn" onclick="execCmd('weekly-editor','italic')"><i class="fa fa-italic"></i></button>
+              <button class="tool-btn" onclick="execCmd('weekly-editor','underline')"><i class="fa fa-underline"></i></button>
+              <button class="tool-btn" onclick="execCmd('weekly-editor','strikeThrough')"><i class="fa fa-strikethrough"></i></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('weekly-editor','justifyLeft')"><i class="fa fa-align-left"></i></button>
+              <button class="tool-btn" onclick="execCmd('weekly-editor','justifyCenter')"><i class="fa fa-align-center"></i></button>
+              <button class="tool-btn" onclick="execCmd('weekly-editor','justifyRight')"><i class="fa fa-align-right"></i></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('weekly-editor','insertUnorderedList')"><i class="fa fa-list-ul"></i></button>
+              <button class="tool-btn" onclick="execCmd('weekly-editor','insertOrderedList')"><i class="fa fa-list-ol"></i></button>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <label class="color-btn" title="Text Color"><i class="fa fa-font"></i>
+                <input type="color" onchange="execCmd('weekly-editor','foreColor',this.value)" value="#1a1a1a"/>
+              </label>
+              <label class="color-btn" title="Highlight"><i class="fa fa-highlighter"></i>
+                <input type="color" onchange="execCmd('weekly-editor','backColor',this.value)" value="#fffde7"/>
+              </label>
+            </div>
+            <div class="toolbar-divider"></div>
+            <div class="toolbar-group">
+              <button class="tool-btn" onclick="execCmd('weekly-editor','removeFormat')"><i class="fa fa-remove-format"></i></button>
+            </div>
+          </div>
+          <div class="editor-content" id="weekly-editor" contenteditable="true" spellcheck="true" placeholder="Write your weekly summary here…"></div>
+        </div>
+
+        <!-- Logs Panel -->
+        <div class="logs-panel full-width" id="weekly-logs-panel">
+          <div class="logs-header">
+            <span class="logs-title">Weekly Logs</span>
+            <span class="logs-count" id="weekly-count">0 entries</span>
+          </div>
+          <div class="logs-list" id="weekly-logs-list">
+            <p class="empty-state">No weekly reports yet.</p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div><!-- /app -->
+
+  <!-- UNLOCK MODAL -->
+  <div id="unlock-modal" class="modal-overlay hidden">
+    <div class="modal small-modal">
+      <div class="modal-header">
+        <span class="modal-title">Writer Access — Abdul Hafeez</span>
+        <button class="modal-close" onclick="closeUnlockModal()"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="unlock-body">
+        <p class="unlock-hint">Enter your password to write and edit reports.</p>
+        <div class="login-field">
+          <input type="password" id="unlock-password" placeholder="Password" autocomplete="off"/>
+          <button onclick="unlock()"><i class="fa fa-arrow-right"></i></button>
+        </div>
+        <p class="login-error" id="unlock-error">Incorrect password.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- READ MODAL -->
+  <div id="read-modal" class="modal-overlay hidden">
+    <div class="modal read-modal">
+      <div class="modal-header">
+        <div class="read-modal-meta">
+          <span id="read-modal-title" class="modal-title"></span>
+          <span id="read-modal-sub" class="read-modal-sub"></span>
+        </div>
+        <div style="display:flex;gap:0.5rem;align-items:center;">
+          <button id="read-edit-btn" class="action-btn hidden" title="Edit" onclick="openEditFromRead()"><i class="fa fa-pen"></i></button>
+          <button class="modal-close" onclick="closeReadModal()"><i class="fa fa-times"></i></button>
+        </div>
+      </div>
+      <div class="read-modal-body" id="read-modal-body"></div>
+      <div class="read-modal-footer" id="read-modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- EDIT MODAL -->
+  <div id="edit-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="modal-title" class="modal-title">Edit Report</span>
+        <button class="modal-close" onclick="closeModal()"><i class="fa fa-times"></i></button>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <select class="toolbar-select" onchange="execCmd('modal-editor','fontName',this.value)">
+            <option value="DM Sans">DM Sans</option>
+            <option value="Cormorant Garamond">Cormorant</option>
+            <option value="Georgia">Georgia</option>
+            <option value="Courier New">Courier</option>
+            <option value="Arial">Arial</option>
+          </select>
+          <select class="toolbar-select size-select" onchange="execCmd('modal-editor','fontSize',this.value)">
+            <option value="2">Small</option>
+            <option value="3" selected>Normal</option>
+            <option value="4">Large</option>
+            <option value="5">XL</option>
+            <option value="6">XXL</option>
+          </select>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+          <button class="tool-btn" onclick="execCmd('modal-editor','bold')"><i class="fa fa-bold"></i></button>
+          <button class="tool-btn" onclick="execCmd('modal-editor','italic')"><i class="fa fa-italic"></i></button>
+          <button class="tool-btn" onclick="execCmd('modal-editor','underline')"><i class="fa fa-underline"></i></button>
+          <button class="tool-btn" onclick="execCmd('modal-editor','strikeThrough')"><i class="fa fa-strikethrough"></i></button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+          <button class="tool-btn" onclick="execCmd('modal-editor','insertUnorderedList')"><i class="fa fa-list-ul"></i></button>
+          <button class="tool-btn" onclick="execCmd('modal-editor','insertOrderedList')"><i class="fa fa-list-ol"></i></button>
+        </div>
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+          <label class="color-btn"><i class="fa fa-font"></i>
+            <input type="color" onchange="execCmd('modal-editor','foreColor',this.value)" value="#1a1a1a"/>
+          </label>
+        </div>
+      </div>
+      <div class="editor-content modal-editor" id="modal-editor" contenteditable="true" spellcheck="true"></div>
+      <div class="modal-footer">
+        <button class="cancel-btn" onclick="closeModal()">Cancel</button>
+        <button class="save-btn" onclick="saveEdit()"><i class="fa fa-check"></i> Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>
