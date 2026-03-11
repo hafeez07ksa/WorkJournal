@@ -97,11 +97,16 @@ function normalizeRow(r) {
 }
 
 function parseTaskImages(t) {
-  if (t.images && typeof t.images === "string" && t.images.startsWith("[")) {
+  if (Array.isArray(t.images)) return t;
+  if (t.images && typeof t.images === "string" && t.images.trim().startsWith("[")) {
     try { t.images = JSON.parse(t.images); } catch(e) { t.images = []; }
-  } else if (!Array.isArray(t.images)) {
+  } else {
     t.images = [];
   }
+  // Wrap plain URL strings into the {src, uploaded} format for consistency
+  t.images = t.images.map(img =>
+    typeof img === "string" ? { src: img, uploaded: true } : img
+  );
   return t;
 }
 
@@ -361,7 +366,8 @@ function openTaskEdit(type, id) {
   document.getElementById("task-modal-title").textContent = "Edit Task";
   document.getElementById("task-title-input").value = task.label || "";
   document.getElementById("task-modal-editor").innerHTML = task.content || "";
-  _taskImages = task.images ? [...task.images] : [];
+  _taskImages = task.images ? task.images.map(img =>
+    typeof img === "string" ? { src: img, uploaded: true } : img) : [];
   renderImagePreviews();
   const imgSection = document.getElementById("task-img-section");
   if (imgSection) imgSection.style.display = "";
@@ -380,9 +386,10 @@ function openTaskRead(type, id) {
   const imgContainer = document.getElementById("read-modal-images");
   if (imgContainer) {
     if (task.images && task.images.length) {
-      imgContainer.innerHTML = task.images.map(src =>
-        `<img src="${src}" class="read-modal-img" onclick="openLightbox(this.src)" />`
-      ).join("");
+      imgContainer.innerHTML = task.images.map(img => {
+        const src = typeof img === "string" ? img : img.src;
+        return `<img src="${src}" class="read-modal-img" onclick="openLightbox(this.src)" />`;
+      }).join("");
       imgContainer.style.display = "";
     } else {
       imgContainer.innerHTML = "";
@@ -410,12 +417,15 @@ async function saveTask() {
   const content = document.getElementById("task-modal-editor").innerHTML.trim();
   if (!label) { showToast("Please enter a task title.", true); return; }
 
-  const taskId  = mode === "edit" ? id : "task-" + Date.now();
-  // Store images as JSON string in the savedAt-adjacent field
-  const entry   = { type, id:taskId, label, content, savedAt:new Date().toISOString(), images:_taskImages };
+  showToast("Uploading images…");
+  await uploadPendingImages(); // upload base64 → Drive URLs first
+
+  const taskId   = mode === "edit" ? id : "task-" + Date.now();
+  const imgUrls  = _taskImages.map(img => img.src || img); // Drive URLs
+  const entry    = { type, id:taskId, label, content, savedAt:new Date().toISOString(), images:imgUrls };
 
   showToast("Saving…");
-  await sheetSave({ ...entry, images: JSON.stringify(_taskImages) });
+  await sheetSave({ ...entry, images: JSON.stringify(imgUrls) });
 
   const arr = _allReports[type] || [];
   const idx = arr.findIndex(t => t.id === taskId);
@@ -561,9 +571,10 @@ async function deleteReport(type, id) {
 }
 
 /* =============================================
-   IMAGE UPLOAD (ongoing tasks)
+   IMAGE UPLOAD (tasks)
    ============================================= */
-let _taskImages = []; // base64 strings
+// Each entry: { src: base64orURL, uploaded: bool, mimeType, filename }
+let _taskImages = [];
 
 function handleImageUpload(input) {
   const files = Array.from(input.files);
@@ -571,20 +582,21 @@ function handleImageUpload(input) {
     if (!file.type.startsWith("image/")) return;
     const reader = new FileReader();
     reader.onload = e => {
-      _taskImages.push(e.target.result);
+      _taskImages.push({ src: e.target.result, uploaded: false, mimeType: file.type, filename: file.name });
       renderImagePreviews();
     };
     reader.readAsDataURL(file);
   });
-  input.value = ""; // reset so same file can be re-added
+  input.value = "";
 }
 
 function renderImagePreviews() {
   const container = document.getElementById("task-img-previews");
   if (!container) return;
-  container.innerHTML = _taskImages.map((src, i) => `
+  container.innerHTML = _taskImages.map((img, i) => `
     <div class="img-preview-wrap">
-      <img src="${src}" class="img-preview"/>
+      <img src="${img.src}" class="img-preview"/>
+      ${!img.uploaded ? '<div class="img-uploading"><i class="fa fa-clock"></i></div>' : ''}
       <button class="img-remove-btn" onclick="removeTaskImage(${i})" title="Remove">
         <i class="fa fa-times"></i>
       </button>
@@ -594,6 +606,32 @@ function renderImagePreviews() {
 function removeTaskImage(idx) {
   _taskImages.splice(idx, 1);
   renderImagePreviews();
+}
+
+// Upload all pending (non-uploaded) images to Google Drive via Apps Script
+async function uploadPendingImages() {
+  for (let i = 0; i < _taskImages.length; i++) {
+    const img = _taskImages[i];
+    if (img.uploaded) continue; // already a Drive URL
+    try {
+      const res = await fetch(SHEET_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "uploadImage",
+          base64: img.src,
+          mimeType: img.mimeType,
+          filename: img.filename,
+        }),
+      });
+      const json = await res.json();
+      if (json.success && json.url) {
+        _taskImages[i] = { src: json.url, uploaded: true };
+      }
+    } catch(e) {
+      console.warn("Image upload failed:", e);
+    }
+  }
 }
 
 function openLightbox(src) {
