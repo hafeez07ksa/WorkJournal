@@ -608,28 +608,35 @@ function removeTaskImage(idx) {
   renderImagePreviews();
 }
 
-// Upload all pending (non-uploaded) images to Google Drive via Apps Script
+// Upload images to Google Drive via Apps Script
+// Uses a regular POST (not no-cors) so we can read the Drive URL back.
+// Apps Script handles CORS on POST responses correctly.
 async function uploadPendingImages() {
   for (let i = 0; i < _taskImages.length; i++) {
     const img = _taskImages[i];
-    if (img.uploaded) continue; // already a Drive URL
+    if (img.uploaded) continue;
     try {
       const res = await fetch(SHEET_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "text/plain" }, // text/plain avoids CORS preflight
         body: JSON.stringify({
           action: "uploadImage",
           base64: img.src,
-          mimeType: img.mimeType,
-          filename: img.filename,
+          mimeType: img.mimeType || "image/jpeg",
+          filename: img.filename || "photo.jpg",
         }),
       });
-      const json = await res.json();
+      const text = await res.text();
+      // Strip JSONP wrapper if present
+      const clean = text.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(/, "").replace(/\);\s*$/, "").replace(/\)\s*$/, "");
+      const json = JSON.parse(clean);
       if (json.success && json.url) {
         _taskImages[i] = { src: json.url, uploaded: true };
+      } else {
+        console.warn("Drive upload failed:", json);
       }
     } catch(e) {
-      console.warn("Image upload failed:", e);
+      console.warn("Image upload error:", e);
     }
   }
 }
