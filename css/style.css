@@ -675,3 +675,11 @@ body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--t
   transition: background var(--transition);
 }
 .lightbox-close:hover { background: rgba(255,255,255,0.25); }
+
+/* Pending upload indicator */
+.img-uploading {
+  position: absolute; bottom: 4px; left: 4px;
+  background: rgba(0,0,0,0.5); color: #fff;
+  border-radius: 4px; font-size: 0.6rem;
+  padding: 1px 4px;
+}
