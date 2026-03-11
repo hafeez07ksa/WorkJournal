@@ -6,7 +6,7 @@
    Password: reporter2024
    ============================================= */
 
-const DEFAULT_PASSWORD = "Haffu@123";
+const DEFAULT_PASSWORD = "reporter2024";
 const SESSION_KEY      = "wr_write_session";
 const PWD_KEY          = "wr_password_hash";
 const SHEET_URL        = "https://script.google.com/macros/s/AKfycbwdhprxCSocI9pz2neFu3TJDFBGD7zgB-4Sl9MSLCW_gav--1jZiQqhWh8PlOwQxgXikw/exec";
@@ -608,32 +608,33 @@ function removeTaskImage(idx) {
   renderImagePreviews();
 }
 
-// Upload images to Google Drive via Apps Script
-// Uses a regular POST (not no-cors) so we can read the Drive URL back.
-// Apps Script handles CORS on POST responses correctly.
+// ── Cloudinary image upload ───────────────────────────────────
+// Free tier: 25GB storage, images are private (not publicly searchable)
+// Set these to your own Cloudinary account values:
+const CLOUDINARY_CLOUD_NAME = "dhufsodsz";  // e.g. "dxyz123abc"
+const CLOUDINARY_UPLOAD_PRESET = "WorkJournalImagesT"; // unsigned preset name
+
 async function uploadPendingImages() {
   for (let i = 0; i < _taskImages.length; i++) {
     const img = _taskImages[i];
     if (img.uploaded) continue;
     try {
-      const res = await fetch(SHEET_URL, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain" }, // text/plain avoids CORS preflight
-        body: JSON.stringify({
-          action: "uploadImage",
-          base64: img.src,
-          mimeType: img.mimeType || "image/jpeg",
-          filename: img.filename || "photo.jpg",
-        }),
-      });
-      const text = await res.text();
-      // Strip JSONP wrapper if present
-      const clean = text.replace(/^[a-zA-Z_$][a-zA-Z0-9_$]*\s*\(/, "").replace(/\);\s*$/, "").replace(/\)\s*$/, "");
-      const json = JSON.parse(clean);
-      if (json.success && json.url) {
-        _taskImages[i] = { src: json.url, uploaded: true };
+      const formData = new FormData();
+      // Convert base64 to blob
+      const res0     = await fetch(img.src);
+      const blob     = await res0.blob();
+      formData.append("file", blob);
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+
+      const res = await fetch(
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
+        { method: "POST", body: formData }
+      );
+      const json = await res.json();
+      if (json.secure_url) {
+        _taskImages[i] = { src: json.secure_url, uploaded: true };
       } else {
-        console.warn("Drive upload failed:", json);
+        console.warn("Cloudinary upload failed:", json);
       }
     } catch(e) {
       console.warn("Image upload error:", e);
