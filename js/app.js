@@ -6,7 +6,7 @@
    Password: reporter2024
    ============================================= */
 
-const DEFAULT_PASSWORD = "reporter2024";
+const DEFAULT_PASSWORD = "Haffu@123";
 const SESSION_KEY      = "wr_write_session";
 const PWD_KEY          = "wr_password_hash";
 const SHEET_URL        = "https://script.google.com/macros/s/AKfycbwdhprxCSocI9pz2neFu3TJDFBGD7zgB-4Sl9MSLCW_gav--1jZiQqhWh8PlOwQxgXikw/exec";
