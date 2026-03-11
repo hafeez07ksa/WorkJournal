@@ -217,6 +217,7 @@
       </div>
     </div>
     <div class="read-modal-body" id="read-modal-body"></div>
+    <div id="read-modal-images" class="read-modal-images" style="display:none;"></div>
     <div class="read-modal-footer" id="read-modal-footer"></div>
   </div>
 </div>
@@ -302,6 +303,17 @@
       </div>
     </div>
     <div class="editor-content modal-editor" id="task-modal-editor" contenteditable="true" spellcheck="true" placeholder="Task description…"></div>
+    <!-- Image upload — only shown for ongoing tasks -->
+    <div id="task-img-section" class="task-img-section" style="display:none;">
+      <div class="task-img-header">
+        <span class="editor-label">Photos</span>
+        <label class="img-upload-btn">
+          <i class="fa fa-image"></i> Add Photos
+          <input type="file" accept="image/*" multiple onchange="handleImageUpload(this)" style="display:none"/>
+        </label>
+      </div>
+      <div id="task-img-previews" class="task-img-previews"></div>
+    </div>
     <div class="modal-footer">
       <button class="cancel-btn" onclick="closeTaskModal()">Cancel</button>
       <button class="save-btn" onclick="saveTask()"><i class="fa fa-check"></i> Save Task</button>
@@ -311,6 +323,12 @@
 
 <!-- TOAST -->
 <div id="toast" class="toast hidden"></div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox hidden" onclick="closeLightbox()">
+  <button class="lightbox-close" onclick="closeLightbox()"><i class="fa fa-times"></i></button>
+  <img id="lightbox-img" class="lightbox-img" src="" alt=""/>
+</div>
 
 <script src="js/app.js"></script>
 </body>
