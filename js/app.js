@@ -96,6 +96,15 @@ function normalizeRow(r) {
   return r;
 }
 
+function parseTaskImages(t) {
+  if (t.images && typeof t.images === "string" && t.images.startsWith("[")) {
+    try { t.images = JSON.parse(t.images); } catch(e) { t.images = []; }
+  } else if (!Array.isArray(t.images)) {
+    t.images = [];
+  }
+  return t;
+}
+
 async function loadAllReports() {
   try {
     const [daily, weekly, completed, ongoing] = await Promise.all([
@@ -104,8 +113,8 @@ async function loadAllReports() {
     ]);
     _allReports.daily     = daily.map(normalizeRow);
     _allReports.weekly    = weekly.map(normalizeRow);
-    _allReports.completed = completed;
-    _allReports.ongoing   = ongoing;
+    _allReports.completed = completed.map(parseTaskImages);
+    _allReports.ongoing   = ongoing.map(parseTaskImages);
   } catch(e) {
     console.error("loadAllReports error:", e);
     showToast("Could not connect to Google Sheets.", true);
@@ -300,7 +309,8 @@ let _taskModal = { type: null, id: null, mode: null }; // mode: 'read'|'edit'|'a
 function renderTasks(type) {
   const container = document.getElementById(type + "-tiles");
   if (!container) return;
-  const tasks = _allReports[type] || [];
+  const tasks = [...(_allReports[type] || [])].sort((a, b) =>
+    new Date(b.savedAt || 0) - new Date(a.savedAt || 0));
   document.getElementById(type + "-count").textContent = tasks.length + (tasks.length===1?" task":" tasks");
   if (!tasks.length) {
     container.innerHTML = '<p class="empty-state">No tasks yet.</p>';
@@ -333,6 +343,11 @@ function openTaskAdd(type) {
   document.getElementById("task-modal-title").textContent = type === "completed" ? "Add Completed Task" : "Add Ongoing Task";
   document.getElementById("task-title-input").value = "";
   document.getElementById("task-modal-editor").innerHTML = "";
+  _taskImages = [];
+  renderImagePreviews();
+  // Show image upload only for ongoing
+  const imgSection = document.getElementById("task-img-section");
+  if (imgSection) imgSection.style.display = type === "ongoing" ? "" : "none";
   document.getElementById("task-modal").classList.remove("hidden");
   pushModalState();
   setTimeout(() => document.getElementById("task-title-input").focus(), 80);
@@ -346,6 +361,10 @@ function openTaskEdit(type, id) {
   document.getElementById("task-modal-title").textContent = "Edit Task";
   document.getElementById("task-title-input").value = task.label || "";
   document.getElementById("task-modal-editor").innerHTML = task.content || "";
+  _taskImages = task.images ? [...task.images] : [];
+  renderImagePreviews();
+  const imgSection = document.getElementById("task-img-section");
+  if (imgSection) imgSection.style.display = type === "ongoing" ? "" : "none";
   document.getElementById("task-modal").classList.remove("hidden");
   pushModalState();
 }
@@ -357,6 +376,19 @@ function openTaskRead(type, id) {
   document.getElementById("read-modal-title").textContent = task.label || "Untitled";
   document.getElementById("read-modal-sub").textContent   = type === "completed" ? "Completed Task" : "Ongoing Task";
   document.getElementById("read-modal-body").innerHTML    = task.content || "";
+  // Show images below content
+  const imgContainer = document.getElementById("read-modal-images");
+  if (imgContainer) {
+    if (task.images && task.images.length) {
+      imgContainer.innerHTML = task.images.map(src =>
+        `<img src="${src}" class="read-modal-img" onclick="openLightbox(this.src)" />`
+      ).join("");
+      imgContainer.style.display = "";
+    } else {
+      imgContainer.innerHTML = "";
+      imgContainer.style.display = "none";
+    }
+  }
   document.getElementById("read-modal-footer").textContent = task.savedAt
     ? "Last updated: " + new Date(task.savedAt).toLocaleString("en-US",{dateStyle:"medium",timeStyle:"short"}) : "";
   const editBtn = document.getElementById("read-edit-btn");
@@ -368,6 +400,8 @@ function openTaskRead(type, id) {
 function closeTaskModal() {
   document.getElementById("task-modal").classList.add("hidden");
   _taskModal = { type:null, id:null, mode:null };
+  _taskImages = [];
+  renderImagePreviews();
 }
 
 async function saveTask() {
@@ -377,10 +411,11 @@ async function saveTask() {
   if (!label) { showToast("Please enter a task title.", true); return; }
 
   const taskId  = mode === "edit" ? id : "task-" + Date.now();
-  const entry   = { type, id:taskId, label, content, savedAt:new Date().toISOString() };
+  // Store images as JSON string in the savedAt-adjacent field
+  const entry   = { type, id:taskId, label, content, savedAt:new Date().toISOString(), images:_taskImages };
 
   showToast("Saving…");
-  await sheetSave(entry);
+  await sheetSave({ ...entry, images: JSON.stringify(_taskImages) });
 
   const arr = _allReports[type] || [];
   const idx = arr.findIndex(t => t.id === taskId);
@@ -524,6 +559,58 @@ async function deleteReport(type, id) {
   if (type==="daily") renderDailyLogs(); else renderWeeklyLogs();
   showToast("Report deleted.");
 }
+
+/* =============================================
+   IMAGE UPLOAD (ongoing tasks)
+   ============================================= */
+let _taskImages = []; // base64 strings
+
+function handleImageUpload(input) {
+  const files = Array.from(input.files);
+  files.forEach(file => {
+    if (!file.type.startsWith("image/")) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      _taskImages.push(e.target.result);
+      renderImagePreviews();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = ""; // reset so same file can be re-added
+}
+
+function renderImagePreviews() {
+  const container = document.getElementById("task-img-previews");
+  if (!container) return;
+  container.innerHTML = _taskImages.map((src, i) => `
+    <div class="img-preview-wrap">
+      <img src="${src}" class="img-preview"/>
+      <button class="img-remove-btn" onclick="removeTaskImage(${i})" title="Remove">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>`).join("");
+}
+
+function removeTaskImage(idx) {
+  _taskImages.splice(idx, 1);
+  renderImagePreviews();
+}
+
+function openLightbox(src) {
+  const lb = document.getElementById("lightbox");
+  if (!lb) return;
+  document.getElementById("lightbox-img").src = src;
+  lb.classList.remove("hidden");
+  pushModalState();
+}
+function closeLightbox() {
+  document.getElementById("lightbox").classList.add("hidden");
+}
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    if (!document.getElementById("lightbox").classList.contains("hidden")) closeLightbox();
+  }
+});
 
 /* =============================================
    TOAST
