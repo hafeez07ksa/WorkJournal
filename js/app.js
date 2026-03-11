@@ -612,7 +612,7 @@ function removeTaskImage(idx) {
 // Free tier: 25GB storage, images are private (not publicly searchable)
 // Set these to your own Cloudinary account values:
 const CLOUDINARY_CLOUD_NAME = "dhufsodsz";  // e.g. "dxyz123abc"
-const CLOUDINARY_UPLOAD_PRESET = "WorkJournalImagesT"; // unsigned preset name
+const CLOUDINARY_UPLOAD_PRESET = "WorkJournalImages"; // unsigned preset name
 
 async function uploadPendingImages() {
   for (let i = 0; i < _taskImages.length; i++) {
