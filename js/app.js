@@ -347,7 +347,7 @@ function openTaskAdd(type) {
   renderImagePreviews();
   // Show image upload only for ongoing
   const imgSection = document.getElementById("task-img-section");
-  if (imgSection) imgSection.style.display = type === "ongoing" ? "" : "none";
+  if (imgSection) imgSection.style.display = "";
   document.getElementById("task-modal").classList.remove("hidden");
   pushModalState();
   setTimeout(() => document.getElementById("task-title-input").focus(), 80);
@@ -364,7 +364,7 @@ function openTaskEdit(type, id) {
   _taskImages = task.images ? [...task.images] : [];
   renderImagePreviews();
   const imgSection = document.getElementById("task-img-section");
-  if (imgSection) imgSection.style.display = type === "ongoing" ? "" : "none";
+  if (imgSection) imgSection.style.display = "";
   document.getElementById("task-modal").classList.remove("hidden");
   pushModalState();
 }
